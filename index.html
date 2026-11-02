@@ -563,4 +563,26 @@ else{ctx.globalAlpha=.35+.12*Math.sin(now/140);ctx.fillStyle=light;for(let i=0;i
 ctx.drawImage(sprite,px,py);ctx.restore()}
 const oldDraw=draw;draw=function(){oldDraw();spriteDraw(performance.now())};
 })();
+
+/* Transformation effective attributes: additive chakra infusion, separate trained stats. */
+(function(){
+function powerState(){
+ if(!player)return null;
+ const h=player.host||{},form=h.beast===9?(h.form||0):h.stage||0;
+ const active=!!h.beast&&h.stage>0&&h.chakra>0;
+ const chakraInfusion=active?Math.min(h.chakra,Math.round(12+form*13+(h.bond||0)*.35)):0;
+ const ratio=chakraInfusion/Math.max(60,player.chakraCapacity);
+ const control=(.55+Math.min(.45,(h.bond||0)/200));
+ const output=active?Math.min(3.5,ratio*2.5*control+(h.stage||0)*.07):0;
+ return {active,form,infusion:chakraInfusion,chakra:player.chakraCapacity+chakraInfusion,strength:player.values.strength*(1+output),speed:player.values.speed*(1+output*.8),durability:player.values.durability*(1+output*.9),output};
+}
+window.shinobiPowerState=powerState;
+const originalRender=renderStats;
+renderStats=function(){originalRender();const p=powerState();if(!p)return;const e=document.querySelector('#stats');if(!e)return;let box=e.querySelector('#swEffective');if(!box){box=document.createElement('section');box.id='swEffective';e.append(box)}
+box.innerHTML='<h2>Effective combat attributes</h2>'+[['Strength',p.strength],['Speed',p.speed],['Durability',p.durability],['Chakra capacity + cloak infusion',p.chakra]].map(([k,v])=>'<div class="stat"><span>'+k+'</span><b>'+Math.round(v*10)/10+'</b></div>').join('')+'<p class="help">Cloak output '+(p.output*100).toFixed(0)+'% · Inherited training modifiers remain unchanged.</p>'};
+const originalMove=loop;loop=function(time){const p=powerState();if(p?.active&&player&&time-lastMove>Math.max(55,(keys.has('shift')?90:150)/(1+Math.min(1.5,p.output*.55)))){let dx=0,dy=0;if(keys.has('arrowleft')||keys.has('a'))dx=-1;else if(keys.has('arrowright')||keys.has('d'))dx=1;else if(keys.has('arrowup')||keys.has('w'))dy=-1;else if(keys.has('arrowdown')||keys.has('s'))dy=1;if(dx||dy){if(cast){cast=null;say('Moving interrupted your hand seals.')}player.facing=dx<0?'left':dx>0?'right':dy<0?'up':'down';if(!block(player.x+dx,player.y+dy)){player.x+=dx;player.y+=dy;walkFrame++;save()}lastMove=time}}originalMove(time)};
+const originalHit=hitTarget;hitTarget=function(target,damage,time){const p=powerState();return originalHit(target,Math.round(damage*(1+(p?.active?p.output*.35:0))),time)};
+const originalEnemy=enemyTick;enemyTick=function(now){const p=powerState(),before=player?.hp;originalEnemy(now);if(p?.active&&player&&before>player.hp){const damage=before-player.hp;player.hp=Math.min(player.maxHP,player.hp+Math.floor(damage*(p.output/(2+p.output))));}};
+const oldPanel=hostPanel;hostPanel=function(){oldPanel();const p=powerState();if(!p?.active)return;const e=document.querySelector('#beastStatus');if(e){const line=document.createElement('p');line.className='help';line.textContent='Active chakra infusion +'+p.infusion+' · Strength '+p.strength.toFixed(1)+' · Speed '+p.speed.toFixed(1)+' · Durability '+p.durability.toFixed(1);e.append(line)}};
+})();
 </script></body></html>
