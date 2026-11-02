@@ -481,4 +481,16 @@ function hud(){const el=document.querySelector('#swHud');if(!player){el.innerHTM
  el.innerHTML=`<strong>${safe(player.name)} · ${safe(player.rank||'Shinobi')}</strong><div>HP ${Math.round(player.hp)} / ${Math.round(player.maxHP)}</div><div class="meter"><i style="width:${pct(player.hp,player.maxHP)}%"></i></div><div>CHAKRA ${Math.round(player.chakra)} / ${Math.round(player.chakraCapacity)}</div><div class="meter ch"><i style="width:${pct(player.chakra,player.chakraCapacity)}%"></i></div><div>LV ${player.level} · GEN ${player.generation||1} · ${safe(player.area||'village')}</div>`}
 setInterval(hud,250);hud();
 })();
+
+/* Inherited talent and chakra-output combat patch */
+(function(){
+ const TALENTS=['Ordinary','Gifted','Prodigy','Exceptional Prodigy'];
+ function initTalent(){if(!player)return;if(!player.talent){const r=Math.random();player.talent=r<.015?'Exceptional Prodigy':r<.10?'Prodigy':r<.34?'Gifted':'Ordinary';player.talentFactor={Ordinary:1,Gifted:1.25,Prodigy:1.65,'Exceptional Prodigy':2.2}[player.talent];player.learningRate=player.talentFactor;save()}}
+ const oldMake=makeCharacter;makeCharacter=function(){oldMake();initTalent();renderStats()};
+ const oldRender=renderStats;renderStats=function(){initTalent();oldRender();if(player){const panel=document.querySelector('#stats');if(panel&&!panel.querySelector('#swTalent')){const e=document.createElement('div');e.id='swTalent';e.className='stat';e.innerHTML='<span>Learning aptitude</span><b>'+safe(player.talent||'Ordinary')+' · '+(player.talentFactor||1).toFixed(2)+'×</b>';panel.append(e)}}};
+ const oldReward=reward;reward=function(xp){initTalent();return oldReward(Math.max(1,Math.round(xp*(player?.talentFactor||1))))};
+ const oldHit=hitTarget;hitTarget=function(target,damage,time){let bonus=1;if(player?.host?.beast&&player.host.stage){const h=player.host;const capacity=Math.max(1,player.chakraCapacity);const offered=Math.min(h.chakra,Math.round((h.stage*5+8)*(1+(h.bond||0)/160)));const chakraRatio=offered/capacity;bonus+=Math.min(2.5,chakraRatio*2.6+h.stage*.065);if(h.beast===9&&h.form>=9)bonus+=.22}return oldHit(target,Math.round(damage*bonus),time)};
+ const oldPanel=hostPanel;hostPanel=function(){oldPanel();if(!player?.host?.beast)return;const h=player.host;const e=document.querySelector('#beastStatus');if(e){let info=document.getElementById('swBeastPower');if(!info){info=document.createElement('p');info.id='swBeastPower';e.append(info)}info.textContent='Cloak combat output: '+(h.stage?'ACTIVE':'INACTIVE')+' · Beast chakra '+Math.round(h.chakra)+' · Higher stages add chakra-assisted attack output, limited by reserves and bond.'}};
+ if(player){initTalent();renderStats()}
+})();
 </script></body></html>
