@@ -718,25 +718,64 @@ if(gold){Object.assign(p,{skin:'#f5d45f',shadow:'#ba8a2f',hair:'#f8e98d',hairLig
 else if(red){Object.assign(p,{skin:'#aa3837',shadow:'#64272e',hair:'#6d1e29',hairLight:'#bb3b35',cloth:'#852b32',clothLight:'#d4463b',trim:'#f78a63',pants:'#5b2530',band:'#e26a54'})}
 else{Object.assign(p,{cloth:'#a84930',clothLight:'#e97b42',trim:'#ffd49a',band:'#f18a5e'})}}
 return p}
-function build(kind,p){const sheet=document.createElement('canvas');sheet.width=POSES.length*32;sheet.height=DIRS.length*32;const c=sheet.getContext('2d');c.imageSmoothingEnabled=false;
-for(let d=0;d<4;d++)for(let n=0;n<POSES.length;n++){const dir=DIRS[d],pose=POSES[n],x0=n*32,y0=d*32;const q=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x0+x,y0+y,w,h)};
-const walk=n===1?2:n===3?-2:0,bob=n===1||n===3?1:0,attack=pose==='attack',cast=pose==='cast',guard=pose==='guard',hurt=pose==='hurt';
-const armL=attack?13:cast?12:guard?10:18,armR=attack?9:cast?12:guard?10:18;
-q(6,29,21,2,'#1b2730');q(10,24+bob+walk,5,5,p.pants);q(18,24+bob-walk,5,5,p.pants);
-q(9,28+Math.max(0,walk),7,2,'#151f29');q(18,28+Math.max(0,-walk),7,2,'#151f29');
-q(7,armL,5,9,p.shadow);q(8,armL,4,8,p.skin);q(22,armR,4,9,p.shadow);q(22,armR,3,8,p.skin);
-if(attack){q(dir==='left'?3:24,10,5,3,p.trim);q(dir==='left'?0:28,8,4,7,'#dfe8ec')}
-if(cast){q(12,20,9,4,p.skin);q(13,21,7,2,p.shadow)}
-q(10,16+bob,14,10,p.cloth);q(11,16+bob,11,3,p.clothLight);q(12,19+bob,10,2,p.trim);
-q(10,24+bob,14,2,p.pants);q(16,17+bob,2,7,p.shadow);
-q(11,7+bob,13,12,p.shadow);q(12,7+bob,11,11,p.skin);
-if(dir==='up'){q(10,5+bob,15,11,p.hair);q(12,7+bob,11,4,p.hairLight);q(11,12+bob,13,3,p.band)}
-else if(dir==='down'){q(10,5+bob,15,7,p.hair);q(12,6+bob,10,2,p.hairLight);q(10,11+bob,15,3,p.band);q(13,12+bob,9,1,p.trim);q(13,15+bob,2,2,hurt?'#e2b4aa':'#1a252b');q(20,15+bob,2,2,hurt?'#e2b4aa':'#1a252b');q(16,18+bob,3,1,p.shadow)}
-else{q(11,5+bob,14,7,p.hair);q(12,6+bob,10,2,p.hairLight);q(10,11+bob,15,3,p.band);q(dir==='left'?12:21,15+bob,2,2,'#20242a');q(dir==='left'?10:24,17+bob,2,2,p.shadow)}
-q(11,14+bob,2,3,p.shadow);q(23,14+bob,2,3,p.shadow);
-if(guard){q(10,15,14,3,p.trim);q(12,17,10,3,p.clothLight)}
-if(hurt){q(9,9,2,2,'#e4b1a7');q(24,9,2,2,'#e4b1a7')}
-}return sheet}
+
+function build(kind,p){
+ // 40x40 hand-pixelled silhouettes, eight poses, four directions.
+ const SIZE=40,sheet=document.createElement('canvas');sheet.width=POSES.length*SIZE;sheet.height=DIRS.length*SIZE;
+ const c=sheet.getContext('2d');c.imageSmoothingEnabled=false;
+ const outline='#20232c',dark='#333541',steel='#c6d5dc',shine='#f5e9cf';
+ for(let d=0;d<4;d++)for(let n=0;n<POSES.length;n++){
+ const dir=DIRS[d],pose=POSES[n],x0=n*SIZE,y0=d*SIZE;
+ const q=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x0+Math.round(x),y0+Math.round(y),w,h)};
+ const moving=n>=1&&n<=3,step=n===1?2:n===3?-2:0,bob=moving?1:0,attack=pose==='attack',cast=pose==='cast',guard=pose==='guard',hurt=pose==='hurt';
+ // Boots, split legs, and articulated limbs with dark contour.
+ q(11,34,19,2,'#252c31');
+ q(13,27+bob+step,5,7,p.pants);q(22,27+bob-step,5,7,p.pants);
+ q(12,33+Math.max(0,step),7,3,outline);q(21,33+Math.max(0,-step),7,3,outline);
+ q(13,33+Math.max(0,step),5,1,'#85909b');q(22,33+Math.max(0,-step),5,1,'#85909b');
+ // Narrow-waisted shinobi jacket and flared shoulders.
+ q(12,19+bob,16,11,outline);q(13,19+bob,14,10,p.cloth);
+ q(13,20+bob,14,3,p.clothLight);q(17,20+bob,2,9,p.shadow);
+ q(14,27+bob,12,2,p.trim);q(14,29+bob,12,2,p.pants);
+ q(10,20+bob,4,9,outline);q(11,20+bob,3,8,p.cloth);
+ q(27,20+bob,4,9,outline);q(27,20+bob,3,8,p.cloth);
+ const ly=attack?14:cast?23:guard?17:24,ry=attack?9:cast?23:guard?17:24;
+ q(10,ly,4,7,p.shadow);q(11,ly+1,3,5,p.skin);
+ q(27,ry,4,7,p.shadow);q(27,ry+1,3,5,p.skin);
+ if(attack){q(29,11,3,4,p.skin);q(31,7,2,10,steel);q(33,4,1,11,shine);q(30,16,5,2,outline)}
+ if(cast){q(16,23,8,4,p.skin);q(17,24,6,2,p.shadow)}
+ if(guard){q(13,17,15,3,p.trim);q(15,20,10,2,p.clothLight)}
+ // Neck and cheek shadows, larger anime-style head.
+ q(18,17+bob,5,4,p.shadow);
+ q(12,7+bob,16,13,outline);q(13,8+bob,14,11,p.shadow);
+ q(14,8+bob,12,10,p.skin);q(14,16+bob,12,3,p.shadow);
+ if(dir==='down'){
+   q(15,14+bob,3,2,outline);q(23,14+bob,3,2,outline);
+   q(16,14+bob,2,1,shine);q(24,14+bob,2,1,shine);
+   q(19,18+bob,3,1,'#7b4b42');
+ }else if(dir==='left'){
+   q(14,14+bob,3,2,outline);q(14,14+bob,2,1,shine);q(13,17+bob,2,2,p.shadow);
+ }else if(dir==='right'){
+   q(24,14+bob,3,2,outline);q(25,14+bob,2,1,shine);q(27,17+bob,2,2,p.shadow);
+ }
+ // Individually shaped layered anime hair, longer spikes, temple locks.
+ q(12,5+bob,17,7,p.hair);q(14,4+bob,13,3,p.hair);
+ q(11,8+bob,4,9,p.hair);q(26,8+bob,4,8,p.hair);
+ q(14,3+bob,4,5,p.hair);q(19,1+bob,5,7,p.hair);q(25,3+bob,4,6,p.hair);
+ q(9,7+bob,5,5,p.hair);q(28,6+bob,4,5,p.hair);
+ q(15,5+bob,5,2,p.hairLight);q(22,4+bob,4,2,p.hairLight);
+ if(kind==='teacher'){q(13,1+bob,5,4,p.hairLight);q(23,0+bob,5,5,p.hairLight);q(9,6+bob,4,5,p.hairLight)}
+ if(kind==='enemy'){q(11,3+bob,5,4,p.hair);q(25,1+bob,4,5,p.hair);q(28,10+bob,3,8,p.hair)}
+ // Metallic forehead protector and engraved emblem.
+ if(dir!=='up'){q(13,10+bob,15,3,p.band);q(17,10+bob,7,3,steel);q(19,11+bob,3,1,outline)}
+ else{q(13,12+bob,15,4,p.hair);q(16,13+bob,9,1,p.hairLight)}
+ if(hurt){q(12,15,3,2,'#d96761');q(26,17,2,2,'#d96761')}
+ // Subtle cloth folds and gloves.
+ q(13,23+bob,2,3,p.clothLight);q(25,24+bob,2,2,p.shadow);
+ q(10,28,4,2,dark);q(27,28,4,2,dark);
+ }
+ return sheet;
+}
 function sheetFor(kind){const p=palette(kind),key=JSON.stringify(p);if(!sheets[kind]||contexts[kind]!==key){sheets[kind]=build(kind,p);contexts[kind]=key}return sheets[kind]}
 let playerPose='idle',playerPoseUntil=0,previousCombat=0,prevHp=player?.hp||100,lastX=player?.x,lastY=player?.y,lastChange=0;
 function pose(name,ms){playerPose=name;playerPoseUntil=performance.now()+ms}
@@ -749,7 +788,7 @@ draw=function(){
  if(player.x!==lastX||player.y!==lastY){lastX=player.x;lastY=player.y;lastChange=now}
  const moving=now-lastChange<200;
  const frame=now<playerPoseUntil?POSES.indexOf(playerPose):moving?1+Math.floor(now/95)%3:0;
- function render(kind,x,y,dir,n){ctx.drawImage(sheetFor(kind),Math.max(0,n)*32,Math.max(0,DIRS.indexOf(dir))*32,32,32,x*S,y*S,32,32)}
+ function render(kind,x,y,dir,n){ctx.drawImage(sheetFor(kind),Math.max(0,n)*40,Math.max(0,DIRS.indexOf(dir))*40,40,40,x*S-4,y*S-9,40,40)}
  // Replaces the basic rectangular actors with cached multi-frame sprites. Existing world and effects stay.
  render('teacher',teacher.x,teacher.y,'down',Math.floor(now/800)%2?0:1);
  if(enemy.hp>0)render('enemy',enemy.x,enemy.y,enemy.stance==='approach'?'left':'down',enemy.stance==='casting'?5:Math.floor(now/180)%4);
