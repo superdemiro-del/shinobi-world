@@ -537,6 +537,7 @@ const info=document.createElement('div');info.style.flex='1';info.textContent='G
 const b=document.createElement('button');b.textContent=row.id===player?.familyId?'Playing':'Play';b.disabled=row.id===player?.familyId;b.onclick=()=>select(row.id);card.append(b);el.append(card)}}
 const oldRender=renderStats;renderStats=function(){oldRender();renderRoster()};
 renderRoster();
+window.shinobiDynastyAPI={dynasty,persist,renderRoster};
 /* Hide old simple character replacement from legacy succession path. */
 const style=document.createElement('style');style.textContent='#swFamilyInfo{font-size:12px}#swDynasty .stat{background:#192a32}';document.head.append(style);
 /* 32x32 directional, four-frame cloak-specific character render pass. */
@@ -588,6 +589,7 @@ const oldPanel=hostPanel;hostPanel=function(){oldPanel();const p=powerState();if
 
 /* Genetics II: diploid polygenic loci, recombination, recessive carriers, de novo variants, siblings. */
 (function(){
+const {dynasty,persist,renderRoster}=window.shinobiDynastyAPI;
 const TRAITS=['strength','speed','durability','reserve','aptitude','control'];
 const traitBases={strength:1,speed:1,durability:1,reserve:100,aptitude:1,control:1};
 const loci=8;
