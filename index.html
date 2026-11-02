@@ -585,4 +585,54 @@ const originalHit=hitTarget;hitTarget=function(target,damage,time){const p=power
 const originalEnemy=enemyTick;enemyTick=function(now){const p=powerState(),before=player?.hp;originalEnemy(now);if(p?.active&&player&&before>player.hp){const damage=before-player.hp;player.hp=Math.min(player.maxHP,player.hp+Math.floor(damage*(p.output/(2+p.output))));}};
 const oldPanel=hostPanel;hostPanel=function(){oldPanel();const p=powerState();if(!p?.active)return;const e=document.querySelector('#beastStatus');if(e){const line=document.createElement('p');line.className='help';line.textContent='Active chakra infusion +'+p.infusion+' · Strength '+p.strength.toFixed(1)+' · Speed '+p.speed.toFixed(1)+' · Durability '+p.durability.toFixed(1);e.append(line)}};
 })();
+
+/* Genetics II: diploid polygenic loci, recombination, recessive carriers, de novo variants, siblings. */
+(function(){
+const TRAITS=['strength','speed','durability','reserve','aptitude','control'];
+const traitBases={strength:1,speed:1,durability:1,reserve:100,aptitude:1,control:1};
+const loci=8;
+function allele(){return Math.round((Math.random()-.5)*1000)/1000}
+function founder(p){if(p.dna?.v===3)return p.dna;
+ const dna={v:3,traits:{},variants:[],origins:p.parents||[],created:'founder'};
+ for(const trait of TRAITS){const target=trait==='reserve'?(p.chakraCapacity||100)/100:trait==='aptitude'?(p.talentFactor||1):trait==='control'?1:(p.mods?.[trait]||1);const delta=Math.log(Math.max(.1,target))/loci;
+ dna.traits[trait]=Array.from({length:loci},()=>[delta/2+allele()*.035,delta/2+allele()*.035]);}
+ p.dna=dna;return dna;
+}
+function gamete(dna,trait){const pairs=dna.traits[trait],out=[];let strand=Math.random()<.5?0:1;for(let i=0;i<pairs.length;i++){if(i&&Math.random()<.16)strand=1-strand;out.push(pairs[i][strand])}return out}
+function express(dna,trait){const sum=dna.traits[trait].reduce((n,p)=>n+p[0]+p[1],0);return trait==='reserve'?Math.round(100*Math.exp(sum)):Math.round(Math.exp(sum)*100)/100}
+function childDNA(a,b){const da=founder(a),db=founder(b),out={v:3,traits:{},variants:[],origins:[a.familyId||a.name,b.familyId||b.name],created:'recombined'};
+ for(const trait of TRAITS){const x=gamete(da,trait),y=gamete(db,trait);out.traits[trait]=x.map((v,i)=>[v,y[i]]);
+ // Simplified gameplay mutation probability, intentionally higher than biological per-base rates.
+ if(Math.random()<.055){const i=Math.floor(Math.random()*loci),side=Math.random()<.5?0:1,delta=(Math.random()<.5?-1:1)*(.02+Math.random()*.15);out.traits[trait][i][side]+=delta;out.variants.push({trait,locus:i+1,effect:delta>0?'positive':'negative',magnitude:Math.round(delta*1000)/1000,type:'de novo germline'})}}
+ // Fictional recessive bloodline marker; can be carried invisibly by either parent.
+ const copy=parent=>parent.dna?.recessive||{ocular:[false,false],vitality:[false,false]};
+ const ca=copy(a),cb=copy(b);out.recessive={};for(const key of ['ocular','vitality'])out.recessive[key]=[ca[key][Math.random()<.5?0:1],cb[key][Math.random()<.5?0:1]];
+ return out}
+function npc(lineage){const c=clans[lineage]||clans.Civilian;const p={name:'NPC '+lineage,parents:[lineage,lineage],mods:{strength:c.str,speed:c.spd,durability:c.dur},chakraCapacity:c.chakra,talentFactor:1};founder(p);p.dna.recessive={ocular:[lineage==='Uchiha'||lineage==='Hyuga',false],vitality:[lineage==='Uzumaki',false]};return p}
+function apply(p,dna){p.dna=dna;p.mods={strength:express(dna,'strength'),speed:express(dna,'speed'),durability:express(dna,'durability')};p.chakraCapacity=Math.max(30,express(dna,'reserve'));p.chakra=p.chakraCapacity;p.talentFactor=Math.max(.7,Math.min(2.6,express(dna,'aptitude')));p.learningRate=p.talentFactor;p.talent=p.talentFactor>=1.98?'Exceptional Prodigy':p.talentFactor>=1.48?'Prodigy':p.talentFactor>=1.17?'Gifted':'Ordinary';p.controlPotential=express(dna,'control');}
+if(player)founder(player);
+const oldSave=save;save=function(){if(player)founder(player);oldSave()};
+const oldMake=makeCharacter;makeCharacter=function(){oldMake();if(player){founder(player);save()}};
+const family=document.querySelector('#swFamily'),button=document.querySelector('#swDescendant');
+const parentSelect=document.createElement('select');parentSelect.id='swParentMode';parentSelect.innerHTML='<option value="npc">NPC partner by lineage</option><option value="roster">Existing family character</option>';
+const rosterSelect=document.createElement('select');rosterSelect.id='swOtherParent';const l=document.createElement('label');l.textContent='Second parent';l.append(parentSelect,rosterSelect);if(family)family.insertBefore(l,document.querySelector('#swChildName')?.closest('label')||button);
+function options(){rosterSelect.innerHTML='';for(const r of dynasty.people||[]){if(r.id===player?.familyId)continue;const o=document.createElement('option');o.value=r.id;o.textContent=r.character.name+' · Gen '+(r.character.generation||1);rosterSelect.append(o)}rosterSelect.style.display=parentSelect.value==='roster'?'block':'none';document.querySelector('#swPartner').closest('label').style.display=parentSelect.value==='npc'?'block':'none'}
+parentSelect.onchange=options;
+function heir(){if(!player)return;const name=document.querySelector('#swChildName').value.trim().slice(0,24);if(!name)return say('Name the descendant.');if(dynasty.people.length>=28)return say('Family roster is full.');
+const otherRow=parentSelect.value==='roster'?dynasty.people.find(r=>r.id===rosterSelect.value):null;
+const other=otherRow?.character||npc(document.querySelector('#swPartner').value);
+if(other.familyId===player.familyId)return say('Choose a different parent.');
+const related=(x,y)=>{const a=new Set([x.familyId,...(x.familyParents||[])]);return [y.familyId,...(y.familyParents||[])].some(z=>a.has(z))};
+if(otherRow&&related(player,other))return say('Directly related or sibling pairings are not supported.');
+const a=player;founder(a);founder(other);const dna=childDNA(a,other);
+const lineageA=a.parents?.[Math.random()<.5?0:1]||'Civilian',lineageB=other.parents?.[Math.random()<.5?0:1]||document.querySelector('#swPartner').value;
+const p={version:2,name,village:a.village,clan:lineageA===lineageB?lineageA:lineageA+' / '+lineageB+' heritage',parents:[lineageA,lineageB],values:{strength:10,speed:10,durability:10},hp:100,maxHP:100,element:Math.random()<.5?a.element:other.element,dojutsu:'No identified dojutsu potential',training:0,chakraControl:0,combat:0,enemyWins:0,eyeActive:false,eyeStage:0,x:2,y:8,facing:'down',xp:0,level:1,missionCount:0,known:['Burst'],equipped:'Burst',rank:'Academy Student',generation:Math.max(a.generation||1,other.generation||1)+1,familyId:'sw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),familyParents:[a.familyId,other.familyId||'NPC:'+lineageB],age:12,background:'Descendant'};
+apply(p,dna);const ocular=dna.recessive.ocular;if(ocular?.every(Boolean))p.dojutsu=p.parents.includes('Hyuga')?'Byakugan potential':'Sharingan potential';
+dynasty.people.push({id:p.familyId,parents:p.familyParents,character:JSON.parse(JSON.stringify(p))});persist();renderRoster();say(name+' joined the family roster. '+dna.variants.length+' new germline variants detected.')}
+if(button)button.onclick=heir;
+const panel=document.createElement('section');panel.id='swGenetics';panel.innerHTML='<h2>Genetics laboratory</h2><p class="help">8 diploid loci per trait, parental recombination, sibling variation, recessive carriers and rare gameplay-scaled new variants. Model is fictional, not human genetic prediction.</p><div id="swGeneticDetails"></div>';
+if(family)family.append(panel);
+const oldRender=renderStats;renderStats=function(){oldRender();options();const e=document.querySelector('#swGeneticDetails');if(!e||!player)return;const d=founder(player);e.innerHTML='<p><b>'+player.name+'</b> · '+(d.created||'founder')+'</p>'+TRAITS.map(t=>'<div class="stat"><span>'+t+'</span><b>'+express(d,t)+'</b></div>').join('')+'<p>Inherited / new variants: '+(d.variants.length?d.variants.map(v=>v.trait+' locus '+v.locus+' ('+v.effect+')').join(', '):'none recorded')+'</p>'};
+options();
+})();
 </script></body></html>
