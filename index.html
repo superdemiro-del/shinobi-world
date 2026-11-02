@@ -637,4 +637,32 @@ if(family)family.append(panel);
 const oldRender=renderStats;renderStats=function(){oldRender();options();const e=document.querySelector('#swGeneticDetails');if(!e||!player)return;const d=founder(player);e.innerHTML='<p><b>'+player.name+'</b> · '+(d.created||'founder')+'</p>'+TRAITS.map(t=>'<div class="stat"><span>'+t+'</span><b>'+express(d,t)+'</b></div>').join('')+'<p>Inherited / new variants: '+(d.variants.length?d.variants.map(v=>v.trait+' locus '+v.locus+' ('+v.effect+')').join(', '):'none recorded')+'</p>'};
 options();
 })();
+
+/* Chakra economy: clones split current chakra, scalable Rasengan, wind Rasenshuriken. */
+(function(){
+const pane=document.createElement('section');pane.id='swChakraTech';pane.innerHTML='<h2>Chakra-intensive techniques</h2><p class="help">Larger techniques consume more chakra. Control and nature training unlock higher tiers; clones divide available chakra among bodies.</p><label>Rasengan size<select id="swRasSize"><option value="1">Standard</option><option value="2">Big Ball</option><option value="3">Giant</option><option value="4">Massive</option></select></label><div class="row"><button id="swRasCast">Cast Rasengan</button><button id="swRasenWind">Rasenshuriken</button></div><label>Shadow clones<input type="number" id="swCloneCount" min="1" max="1000" value="2"></label><div class="row"><button id="swCloneCreate">Create clones</button><button id="swCloneDismiss" class="secondary">Release clones</button></div><div id="swChakraReadout" class="help"></div>';
+document.body.append(pane);
+const style=document.createElement('style');style.textContent='body>#swChakraTech{display:none}.sw-body #swChakraTech{display:block}';document.head.append(style);
+const swTabs=document.querySelector('#swTabs');
+function mount(){const body=document.querySelector('#swBody');if(!body)return;const isTech=swTabs?.querySelectorAll('button')[1]?.classList.contains('active');if(isTech&&!body.contains(pane))body.append(pane)}
+const obs=new MutationObserver(mount);if(swTabs)obs.observe(swTabs,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+function available(){if(!player)return 0;return Math.floor(player.chakra+Math.max(0,player.host?.stage?player.host.chakra:0))}
+function spend(n){if(available()<n)return false;const own=Math.min(player.chakra,n);player.chakra-=own;let rem=n-own;if(rem&&player.host?.stage)player.host.chakra=Math.max(0,player.host.chakra-rem);return true}
+function nearTarget(){if(!player)return null;return inAttackRange(dummy)?'dummy':inAttackRange(enemy)&&enemy.hp>0?'enemy':null}
+function castRas(wind=false){if(!player)return;const level=Math.max(1,Math.min(4,Number(document.querySelector('#swRasSize').value)||1));
+if(!player.rasengan?.learned)return say('Train the Rasengan before using advanced variations.');
+if(wind&&(player.element!=='Wind'||player.level<7||player.chakraControl<4))return say('Rasenshuriken requires Wind nature, level 7, and chakra control 4.');
+if(level>1&&player.level<level*2)return say('Higher Rasengan sizes require more experience.');
+const cost=Math.round((wind?80:25)*Math.pow(level,1.8));if(!spend(cost))return say('Need '+cost+' available chakra for this variation.');
+const target=nearTarget();const damage=Math.round((wind?65:28)*Math.pow(level,1.45)*(1+Math.min(1,player.chakraControl/30)));
+if(target)hitTarget(target,damage,performance.now());else say((wind?'Rasenshuriken':'Rasengan')+' tier '+level+' formed using '+cost+' chakra. Face a target within strike range to hit.');
+player.rasengan.uses++;save();renderStats()}
+document.querySelector('#swRasCast').onclick=()=>castRas(false);document.querySelector('#swRasenWind').onclick=()=>castRas(true);
+function createClones(){if(!player)return;const n=Math.floor(Number(document.querySelector('#swCloneCount').value)||0);if(n<1||n>1000)return say('Choose 1–1000 clones.');if(player.clones?.count)return say('Release existing clones first.');
+const chakra=available();const per=Math.floor(chakra/(n+1));if(per<8)return say('Not enough chakra to divide among '+(n+1)+' bodies. Each body needs at least 8 chakra.');
+const total=per*(n+1);if(!spend(total))return;player.chakra=per;player.clones={count:n,perClone:per,created:Date.now()};save();renderStats();say(n+' shadow clones created. Each body has '+per+' chakra.')}
+function dismiss(){if(!player?.clones?.count)return say('No active shadow clones.');const c=player.clones;const recovered=Math.floor(c.count*c.perClone*.65);player.chakra=Math.min(player.chakraCapacity,player.chakra+recovered);player.clones=null;save();renderStats();say('Clones released. Recovered '+recovered+' chakra (gameplay recovery rule).')}
+document.querySelector('#swCloneCreate').onclick=createClones;document.querySelector('#swCloneDismiss').onclick=dismiss;
+const oldRender=renderStats;renderStats=function(){oldRender();const e=document.querySelector('#swChakraReadout');if(!e||!player)return;e.textContent='Current chakra available: '+available()+' · Capacity: '+player.chakraCapacity+' · Active clones: '+(player.clones?.count||0)+' · Per-clone chakra: '+(player.clones?.perClone||0)};
+})();
 </script></body></html>
