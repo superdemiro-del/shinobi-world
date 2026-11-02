@@ -493,4 +493,74 @@ setInterval(hud,250);hud();
  const oldPanel=hostPanel;hostPanel=function(){oldPanel();if(!player?.host?.beast)return;const h=player.host;const e=document.querySelector('#beastStatus');if(e){let info=document.getElementById('swBeastPower');if(!info){info=document.createElement('p');info.id='swBeastPower';e.append(info)}info.textContent='Cloak combat output: '+(h.stage?'ACTIVE':'INACTIVE')+' · Beast chakra '+Math.round(h.chakra)+' · Higher stages add chakra-assisted attack output, limited by reserves and bond.'}};
  if(player){initTalent();renderStats()}
 })();
+
+/* Generational roster, selectable heirs, inheritable aptitude and differentiated animated cloaks. */
+(function(){
+const FKEY='shinobi_dynasty_v1',MAX=28;
+let dynasty;try{dynasty=JSON.parse(localStorage.getItem(FKEY))}catch{}
+if(!dynasty||!Array.isArray(dynasty.people))dynasty={people:[],active:null,serial:0};
+function persist(){try{localStorage.setItem(FKEY,JSON.stringify(dynasty))}catch{}}
+function uid(){return 'sw-'+Date.now().toString(36)+'-'+(++dynasty.serial)}
+function snapshot(p){return JSON.parse(JSON.stringify(p))}
+function register(p,parents=[]){if(!p)return null;if(!p.familyId)p.familyId=uid();if(!Number.isFinite(p.generation))p.generation=1;
+let row=dynasty.people.find(r=>r.id===p.familyId);
+if(!row){row={id:p.familyId,parents,character:snapshot(p)};dynasty.people.push(row)}
+else row.character=snapshot(p);
+dynasty.active=p.familyId;persist();return row}
+function capture(){if(!player)return;register(player)}
+if(player)register(player);
+const originalSave=save;save=function(){originalSave();if(player)capture()};
+const originalMake=makeCharacter;makeCharacter=function(){if(player)capture();originalMake();if(player){player.familyId=uid();player.generation=1;player.familyParents=[];player.talent=null;player.talentFactor=null;register(player);renderStats()}};
+const originalReward=reward;reward=function(xp){const result=originalReward(xp);if(player)capture();return result};
+function aptitude(gene){const n=Math.max(.65,Math.min(2.5,gene));return n>=1.98?'Exceptional Prodigy':n>=1.48?'Prodigy':n>=1.17?'Gifted':'Ordinary'}
+function newHeir(){if(!player)return;capture();if(dynasty.people.length>=MAX)return say('Family roster full. Export or retire a character before continuing.');
+const other=document.querySelector('#swPartner').value,partner=clans[other],name=document.querySelector('#swChildName').value.trim().slice(0,24);
+if(!name)return say('Name the new generation first.');
+const a=player,ap=a.parents?.[Math.random()<.5?0:1]||'Civilian',own=clans[ap]||clans.Civilian;
+const dominant=a.mods||{strength:1,speed:1,durability:1};
+const oldGene=Number(a.talentFactor)||1;
+const inheritedTalent=Math.max(.75,Math.min(2.4,oldGene*.53+1*.47+rnd(-.26,.26)));
+const mods={strength:rollGene(dominant.strength,partner.str),speed:rollGene(dominant.speed,partner.spd),durability:rollGene(dominant.durability,partner.dur)};
+const inheritedReserve=Math.max(50,(a.genome?.chakraGenes?.length?a.genome.chakraGenes.reduce((x,y)=>x+y,0)/2:a.chakraCapacity));
+const capacity=Math.round(Math.max(50,(inheritedReserve+partner.chakra)/2*rnd(.82,1.18)));
+const lineages=[ap,other];
+const eye=lineages.includes('Uchiha')&&Math.random()<.38?'Sharingan potential':lineages.includes('Hyuga')&&Math.random()<.4?'Byakugan potential':'No identified dojutsu potential';
+const heir={version:2,name,village:a.village,clan:other===ap?ap:ap+' / '+other+' heritage',parents:lineages,mods,values:{strength:10,speed:10,durability:10},chakraCapacity:capacity,chakra:capacity,hp:100,maxHP:100,element:Math.random()<.5?own.element:partner.element,dojutsu:eye,training:0,chakraControl:0,combat:0,enemyWins:0,eyeActive:false,eyeStage:0,x:2,y:8,facing:'down',xp:0,level:1,missionCount:0,known:['Burst'],equipped:'Burst',rank:'Academy Student',generation:(a.generation||1)+1,familyId:uid(),familyParents:[a.familyId,'NPC:'+other],talent:aptitude(inheritedTalent),talentFactor:inheritedTalent,learningRate:inheritedTalent,age:12,background:'Family successor'};
+dynasty.people.push({id:heir.familyId,parents:heir.familyParents,character:snapshot(heir)});persist();renderRoster();say(name+' was born into generation '+heir.generation+'. Select the heir in Family Legacy to play.');}
+function select(id){const row=dynasty.people.find(r=>r.id===id);if(!row)return;capture();player=snapshot(row.character);dynasty.active=id;ensureProgress();heritageInit();beastInit();p5init();save();renderStats();renderRoster();say('Now playing '+player.name+' · Generation '+player.generation);}
+const oldFamilyButton=document.querySelector('#swDescendant');if(oldFamilyButton)oldFamilyButton.onclick=newHeir;
+const family=document.querySelector('#swFamily');if(family){const h=document.createElement('div');h.id='swDynasty';family.append(h);const p=family.querySelector('p');if(p)p.textContent='Create descendants without deleting their parents. Play any saved family member from the roster. Partner NPC ancestry contributes genetic variation. Clan identity is recorded separately from biological heritage.'}
+function renderRoster(){const el=document.querySelector('#swDynasty');if(!el)return;el.innerHTML='<h2>Family tree · '+dynasty.people.length+'/'+MAX+' shinobi</h2>';
+const ordered=[...dynasty.people].sort((a,b)=>(a.character.generation||1)-(b.character.generation||1));
+for(const row of ordered){const p=row.character,parents=(row.parents||[]).map(id=>dynasty.people.find(x=>x.id===id)?.character.name||id.replace('NPC:','')).join(' + ');const card=document.createElement('div');card.className='stat';card.style.cssText='display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid #43554f;margin:7px 0';
+const info=document.createElement('div');info.style.flex='1';info.textContent='GEN '+(p.generation||1)+' · '+p.name+' · '+p.clan+' · '+(p.talent||'Ordinary')+' · '+Math.round(p.chakraCapacity)+' chakra'+(parents?' · Parents: '+parents:'');card.append(info);
+const b=document.createElement('button');b.textContent=row.id===player?.familyId?'Playing':'Play';b.disabled=row.id===player?.familyId;b.onclick=()=>select(row.id);card.append(b);el.append(card)}}
+const oldRender=renderStats;renderStats=function(){oldRender();renderRoster()};
+renderRoster();
+/* Hide old simple character replacement from legacy succession path. */
+const style=document.createElement('style');style.textContent='#swFamilyInfo{font-size:12px}#swDynasty .stat{background:#192a32}';document.head.append(style);
+/* 32x32 directional, four-frame cloak-specific character render pass. */
+const sprite=document.createElement('canvas');sprite.width=32;sprite.height=32;const ink=sprite.getContext('2d');ink.imageSmoothingEnabled=false;
+function block(x,y,w,h,c){ink.fillStyle=c;ink.fillRect(Math.round(x),Math.round(y),w,h)}
+function formStyle(){if(!player?.host?.beast||!player.host.stage)return null;const h=player.host,idx=h.beast===9?(h.form||0):Math.min(9,h.stage+1);return {idx,stage:h.stage,tails:h.beast===9?(p5forms[idx]?.tails||0):Math.max(0,h.stage-1),gold:idx>=10&&h.beast===9,linked:idx===11&&h.beast===9,beast:h.beast}}
+function spriteDraw(now){const form=formStyle();if(!form)return;const px=player.x*S,py=player.y*S;const dir=player.facing||'down',move=performance.now()-phase6LastMoveAt<260;const step=move?Math.sin(now/85)*2:Math.sin(now/300)*.6;
+ink.clearRect(0,0,32,32);const dark=form.gold?'#704b12':form.idx>=5?'#501b20':'#9e3425',light=form.gold?'#ffe46d':form.idx>=5?'#b9362b':'#f47c40',shine=form.gold?'#fff9c0':'#ffb06b';
+const strong=form.idx>=5&&!form.gold;
+block(11,24+step,5,6,dark);block(18,24-step,5,6,dark);
+block(8,17,5,9,light);block(22,17,4,9,light);
+block(9,15,16,12,dark);block(11,17,12,8,light);
+block(12,7,11,11,strong?'#7e1b22':form.gold?'#ffdc65':'#d9a17c');
+if(strong){block(10,5,15,7,'#641a23');block(9,11,17,5,'#b6302a');block(12,17,10,6,'#8e2429')}
+else if(form.gold){block(9,5,16,7,'#ffe880');block(10,10,14,3,'#805e18');block(11,20,12,2,'#9c6719')}
+else{block(10,5,14,6,'#2a2732');block(10,10,14,3,'#ec9650')}
+if(dir!=='up'){if(dir==='down'){block(13,14,2,2,form.gold?'#30241b':'#f5f1e7');block(20,14,2,2,form.gold?'#30241b':'#f5f1e7')}else block(dir==='left'?12:21,14,2,2,'#f5f1e7')}
+if(form.gold){for(let i=0;i<3;i++){block(12+i*4,17,2,2,'#604723');block(13+i*4,23,2,2,'#604723')}}
+if(form.linked){block(11,3,12,3,'#fff6c4');block(10,8,2,8,'#fffbda');block(24,8,2,8,'#fffbda')}
+ctx.save();ctx.imageSmoothingEnabled=false;
+const t=Math.min(9,form.tails);if(t){ctx.strokeStyle=strong?'#a6272a':light;ctx.lineWidth=strong?6:4;ctx.lineCap='round';for(let i=0;i<t;i++){const a=-Math.PI*.85+i*Math.PI*1.7/Math.max(1,t-1),sw=Math.sin(now/190+i*1.6)*5;ctx.beginPath();ctx.moveTo(px+16,py+24);ctx.quadraticCurveTo(px+16+Math.cos(a)*20,py+17+Math.sin(a)*15,px+16+Math.cos(a)*26+sw,py+18+Math.sin(a)*22);ctx.stroke()}}
+if(form.gold){ctx.strokeStyle=form.linked?'#fff6b5':'#ffc849';ctx.lineWidth=3;ctx.globalAlpha=.55+.2*Math.sin(now/170);ctx.strokeRect(px+6,py+4,21,26);ctx.globalAlpha=1}
+else{ctx.globalAlpha=.35+.12*Math.sin(now/140);ctx.fillStyle=light;for(let i=0;i<8;i++){let yy=(i*13+Math.floor(now/65))%37;ctx.fillRect(px+4+(i*11)%25,py+31-yy,2,3)}ctx.globalAlpha=1}
+ctx.drawImage(sprite,px,py);ctx.restore()}
+const oldDraw=draw;draw=function(){oldDraw();spriteDraw(performance.now())};
+})();
 </script></body></html>
