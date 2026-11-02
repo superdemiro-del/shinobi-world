@@ -58,8 +58,46 @@ function block(x,y){return obstacles.has(`${x},${y}`)||entities.some(o=>o.x===x&
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
 function pixel(x,y,w,h,c){rect(Math.round(x),Math.round(y),w,h,c)}
 function person(x,y,shirt,facing='down',moving=false){let px=x*S,py=y*S,step=moving?(walkFrame%2?2:-2):0;pixel(px+7,py+29,19,2,'#273c35');pixel(px+10,py+24,5,6+step,'#26313b');pixel(px+18,py+24,5,6-step,'#26313b');pixel(px+9,py+25,5,3,'#8b9297');pixel(px+19,py+25,5,3,'#8b9297');pixel(px+7,py+16,5,9,'#c79a74');pixel(px+21,py+16,5,9,'#c79a74');pixel(px+9,py+16,15,11,shirt);pixel(px+10,py+20,13,2,'#26323b');pixel(px+12,py+7,10,12,'#d5a681');pixel(px+10,py+5,14,6,'#252b36');pixel(px+9,py+10,16,4,'#657e93');pixel(px+13,py+11,8,2,'#b9cbd0');if(facing==='down'){pixel(px+13,py+15,2,2,'#1a242b');pixel(px+19,py+15,2,2,'#1a242b')}else if(facing==='left'){pixel(px+12,py+15,2,2,'#1a242b');pixel(px+21,py+11,3,2,'#313e48')}else if(facing==='right'){pixel(px+20,py+15,2,2,'#1a242b');pixel(px+9,py+11,3,2,'#313e48')}else{pixel(px+10,py+8,14,9,'#2d3340');pixel(px+13,py+11,8,2,'#49586a')}}
-function tile(x,y){let px=x*S,py=y*S,n=(x*71+y*113)%13,border=x===0||x===W-1||y===0||y===H-1,house=(x>=3&&x<8&&y>=2&&y<5)||(x>=12&&x<17&&y>=8&&y<11);if(house){pixel(px,py,32,32,'#674f42');pixel(px+1,py+1,30,30,'#8a5148');for(let i=0;i<4;i++){pixel(px+2,py+2+i*8,28,2,'#b4745a');pixel(px+((i%2)*11)+4,py+4+i*8,2,5,'#633e3d')}pixel(px+2,py+28,28,3,'#4b3d36');return}if(border){pixel(px,py,32,32,'#395943');pixel(px+2,py+2,28,26,'#4b7951');pixel(px+5,py+4,22,4,'#699a5d');pixel(px+10,py+11,12,12,'#386645');pixel(px+2,py+26,28,5,'#263f33');return}let path=(y===6||y===7)||(x===9&&y>1&&y<12)||(x===10&&y>1&&y<12);pixel(px,py,32,32,path?'#b69c76':(n%2?'#4d855a':'#548b5d'));if(path){pixel(px+1,py+2,30,2,'#c3ac87');pixel(px+5+n,py+13,4,2,'#9b8366');pixel(px+19,py+25,6,2,'#9b8366')}else{pixel(px+4+n,py+5,2,5,'#76a76a');pixel(px+17,py+19+n%5,5,2,'#3e754d');if(n===2||n===8){pixel(px+24,py+7,3,3,'#e6c67d');pixel(px+25,py+5,1,7,'#f2e5b6')}}}
-function draw(){rect(0,0,640,448,'#416c51');for(let y=0;y<H;y++)for(let x=0;x<W;x++)tile(x,y);for(let x=3;x<8;x++){pixel(x*S,2*S-5,32,5,'#543b39');pixel(x*S+2,2*S-3,28,2,'#c88968')}for(let x=12;x<17;x++){pixel(x*S,8*S-5,32,5,'#543b39');pixel(x*S+2,8*S-3,28,2,'#c88968')}pixel(post.x*S+11,post.y*S+4,10,26,'#684e39');pixel(post.x*S+8,post.y*S+5,16,8,'#dfc18d');pixel(post.x*S+10,post.y*S+8,12,2,'#ad7c54');person(teacher.x,teacher.y,'#47617b','down');if(enemy.hp>0){person(enemy.x,enemy.y,'#ad5363','left');pixel(enemy.x*S+10,enemy.y*S-4,12,3,enemy.stance==='casting'?'#ffe59b':enemy.stance==='evade'?'#91e6f0':'#d6d8e0');pixel(enemy.x*S,enemy.y*S+30,32,3,'#572f36');pixel(enemy.x*S,enemy.y*S+30,32*enemy.hp/enemy.maxHP,3,'#f18b80')}pixel(dummy.x*S+12,dummy.y*S+4,8,26,'#8e6241');pixel(dummy.x*S+8,dummy.y*S+8,16,13,'#d5b68d');pixel(dummy.x*S+9,dummy.y*S+11,14,2,'#a67c59');pixel(well.x*S+3,well.y*S+9,26,21,'#56666b');pixel(well.x*S+5,well.y*S+11,22,14,'#9aa8a7');pixel(well.x*S+8,well.y*S+13,16,10,'#347c9f');pixel(well.x*S+10,well.y*S+16,9,2,'#7ec2d7');if(player){person(player.x,player.y,performance.now()<guardUntil?'#7bb5d1':player.eyeActive?(eyeKind()==='Sharingan'?'#b64e5c':'#b7a4e2'):'#d99d48',player.facing,keys.size>0);if(attackFX&&performance.now()<attackFX.until){let d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[attackFX.facing],fx=attackFX.x+d[0],fy=attackFX.y+d[1];ctx.globalAlpha=.8;pixel(fx*S+3,fy*S+4,26,24,attackFX.kind==='k'?'#56c9e9':'#ffdf91');pixel(fx*S+9,fy*S+9,14,14,'#fff3d1');ctx.globalAlpha=1}}ctx.fillStyle='#162a2c';ctx.font='bold 10px monospace';[['TRAIN',post],['SENSEI',teacher],['DUMMY',dummy],['REST',well]].forEach(([t,o])=>{pixel(o.x*S-5,o.y*S-10,t.length*6+4,11,'#e6d8ae');ctx.fillText(t,o.x*S-3,o.y*S-2)});pixel(dummy.x*S,dummy.y*S+30,32,3,'#5c2b2b');pixel(dummy.x*S,dummy.y*S+30,32*dummyHP/100,3,'#d66d61')}
+/* Stone village courtyard: deterministic pixel tiles, slate rooftops and masonry. */
+const courtyardTiles=document.createElement('canvas');courtyardTiles.width=640;courtyardTiles.height=448;
+const courtyardCtx=courtyardTiles.getContext('2d');courtyardCtx.imageSmoothingEnabled=false;
+function stoneNoise(x,y,k=0){let z=(x*374761393+y*668265263+k*2246822519)>>>0;z=Math.imul(z^(z>>>13),1274126177);return ((z^(z>>>16))>>>0)/4294967295}
+function courtyardBuild(){
+ const c=courtyardCtx;
+ const fill=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
+ const mortar=['#b7a58a','#c4b298','#bbaa8e'],stones=['#d4c3a5','#c8b698','#ddcbae','#bda88a','#e4d4b8','#c6b193','#d2bea1'];
+ fill(0,0,640,448,'#baa78d');
+ for(let row=0;row<57;row++)for(let col=0;col<82;col++){
+  const x=col*8+(row%2?4:0)-4,y=row*8,seed=stoneNoise(col,row),width=seed>.75?12:8;
+  fill(x,y,width-1,7,mortar[Math.floor(seed*3)]);
+  fill(x+1,y+1,width-3,5,stones[Math.floor(stoneNoise(col,row,7)*stones.length)]);
+  if(seed>.64)fill(x+2,y+2,3,1,'#e7d8bd');
+  if(seed<.19)fill(x+2,y+5,4,1,'#a99a81');
+ }
+ // Continuous wall and slate buildings, with dimensional shadows and staggered roof tiles.
+ for(let gy=0;gy<H;gy++)for(let gx=0;gx<W;gx++){
+  const x=gx*32,y=gy*32,border=gx===0||gx===W-1||gy===0||gy===H-1;
+  const building=(gx>=3&&gx<8&&gy>=2&&gy<5)||(gx>=12&&gx<17&&gy>=8&&gy<11);
+  if(border){
+   fill(x,y,32,32,'#4a4947');fill(x+1,y+1,30,29,'#7c807a');
+   for(let r=0;r<4;r++){fill(x+2,y+r*8,28,1,'#373e40');for(let k=0;k<3;k++){let ox=(k*12+(r%2)*6)%30;fill(x+ox,y+r*8+2,1,6,'#4e5554')}}
+   fill(x+2,y+3,23,2,'#a5aaa2');fill(x,y+29,32,3,'#313c40');
+  }
+  if(building){
+   fill(x-3,y+5,38,30,'#272f35');fill(x,y,32,29,'#424e54');
+   for(let r=0;r<4;r++){const sy=y+r*8;fill(x,sy,32,1,'#1e2a30');for(let k=0;k<4;k++){const ox=k*10+(r%2)*5-5;fill(x+ox,sy+1,9,6,stoneNoise(gx*4+k,gy*4+r)>.5?'#6b7980':'#56666e');fill(x+ox+1,sy+2,6,1,'#95a1a4');fill(x+ox+2,sy+6,7,1,'#29373d')}}
+   fill(x,y+28,32,4,'#20292e');
+  }
+ }
+ // Stone courtyard accents, grass pushing between paving, scattered debris.
+ for(let i=0;i<90;i++){const x=Math.floor(stoneNoise(i,23)*620)+10,y=Math.floor(stoneNoise(i,41)*420)+10,gx=Math.floor(x/32),gy=Math.floor(y/32);
+ if(gx===0||gx===19||gy===0||gy===13||(gx>=3&&gx<8&&gy>=2&&gy<5)||(gx>=12&&gx<17&&gy>=8&&gy<11))continue;
+ const n=stoneNoise(i,69);if(n>.78){fill(x,y,2,3,'#7f9473');fill(x+2,y-1,1,3,'#849b79')}else if(n<.18){fill(x,y,4,2,'#a9987e');fill(x+1,y-1,2,1,'#e0d1b5')}
+ }
+}
+courtyardBuild();
+function tile(x,y){ctx.drawImage(courtyardTiles,x*S,y*S,S,S,x*S,y*S,S,S)}
+function draw(){rect(0,0,640,448,'#416c51');for(let y=0;y<H;y++)for(let x=0;x<W;x++)tile(x,y);pixel(post.x*S+11,post.y*S+4,10,26,'#684e39');pixel(post.x*S+8,post.y*S+5,16,8,'#dfc18d');pixel(post.x*S+10,post.y*S+8,12,2,'#ad7c54');person(teacher.x,teacher.y,'#47617b','down');if(enemy.hp>0){person(enemy.x,enemy.y,'#ad5363','left');pixel(enemy.x*S+10,enemy.y*S-4,12,3,enemy.stance==='casting'?'#ffe59b':enemy.stance==='evade'?'#91e6f0':'#d6d8e0');pixel(enemy.x*S,enemy.y*S+30,32,3,'#572f36');pixel(enemy.x*S,enemy.y*S+30,32*enemy.hp/enemy.maxHP,3,'#f18b80')}pixel(dummy.x*S+12,dummy.y*S+4,8,26,'#8e6241');pixel(dummy.x*S+8,dummy.y*S+8,16,13,'#d5b68d');pixel(dummy.x*S+9,dummy.y*S+11,14,2,'#a67c59');pixel(well.x*S+3,well.y*S+9,26,21,'#56666b');pixel(well.x*S+5,well.y*S+11,22,14,'#9aa8a7');pixel(well.x*S+8,well.y*S+13,16,10,'#347c9f');pixel(well.x*S+10,well.y*S+16,9,2,'#7ec2d7');if(player){person(player.x,player.y,performance.now()<guardUntil?'#7bb5d1':player.eyeActive?(eyeKind()==='Sharingan'?'#b64e5c':'#b7a4e2'):'#d99d48',player.facing,keys.size>0);if(attackFX&&performance.now()<attackFX.until){let d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[attackFX.facing],fx=attackFX.x+d[0],fy=attackFX.y+d[1];ctx.globalAlpha=.8;pixel(fx*S+3,fy*S+4,26,24,attackFX.kind==='k'?'#56c9e9':'#ffdf91');pixel(fx*S+9,fy*S+9,14,14,'#fff3d1');ctx.globalAlpha=1}}ctx.fillStyle='#162a2c';ctx.font='bold 10px monospace';[['TRAIN',post],['SENSEI',teacher],['DUMMY',dummy],['REST',well]].forEach(([t,o])=>{pixel(o.x*S-5,o.y*S-10,t.length*6+4,11,'#e6d8ae');ctx.fillText(t,o.x*S-3,o.y*S-2)});pixel(dummy.x*S,dummy.y*S+30,32,3,'#5c2b2b');pixel(dummy.x*S,dummy.y*S+30,32*dummyHP/100,3,'#d66d61')}
 function enemyTick(time){
  if(!player)return;
  if(enemy.hp<=0){if(time>=enemy.downUntil){enemy.hp=enemy.maxHP;enemy.x=17;enemy.y=6;enemy.stance='approach'}return}
